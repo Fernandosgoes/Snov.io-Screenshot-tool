@@ -1,174 +1,174 @@
 # Tutorial: Snov.io Screenshot tool
 
-Guia de cada ferramenta: o que ela faz, como usar e um atalho de teclado quando existe.
+A guide to each tool: what it does, how to use it, and a keyboard shortcut when there is one.
 
-> **Imagens pendentes:** os espaços marcados com `[imagem: ...]` precisam de uma captura real do app. O nome sugerido de cada arquivo está entre parênteses e deve ir para `docs/images/`.
+> **Pending images:** the spots marked `[image: ...]` need a real capture of the app. The suggested file name for each one is in parentheses and should go in `docs/images/`.
 
-## Como começar uma captura
+## How to start a capture
 
-1. Pressione **Shift + Backspace** (ou o atalho escolhido em Settings). A tela escurece e congela.
-2. Clique e arraste para selecionar a área. Ao soltar, aparecem a barra vertical de ferramentas (à direita da área) e a barra horizontal (embaixo).
-3. A etiqueta acima da área mostra o tamanho em pixels.
+1. Press **Shift + Backspace** (or the hotkey chosen in Settings). The screen dims and freezes.
+2. Click and drag to select an area. When you release, the vertical tool bar appears to the right of the area and the horizontal action bar appears below it.
+3. The label above the area shows its size in pixels.
 
-`[imagem: seleção com etiqueta de tamanho e as duas barras (01-selecao.png)]`
+`[image: selection with the size label and both bars (01-selection.png)]`
 
-Para recomeçar, pressione **Esc** ou clique no **X** da barra horizontal. Clicar fora da área não cancela, para você não perder o recorte por engano.
+To start over, press **Esc** or click the **X** in the horizontal bar. Clicking outside the area does not cancel it, so you don't lose your selection by mistake.
 
-## Barra vertical: ferramentas
+## Vertical bar: tools
 
-De cima para baixo:
+From top to bottom:
 
-### 1. Borracha (Limpar tudo)
+### 1. Eraser (Clear all)
 
-Apaga **todas** as anotações da captura de uma vez. Não apaga a seleção nem a imagem. Pode ser desfeita com **Ctrl + Z**.
+Removes **all** annotations from the capture at once. It does not remove the selection or the screenshot itself. You can undo it with **Ctrl + Z**.
 
-`[imagem: antes e depois da borracha (02-borracha.png)]`
+`[image: before and after using the eraser (02-eraser.png)]`
 
-### 2. Mover (cruz)
+### 2. Move (cross)
 
-Arrasta a **área selecionada** inteira pela tela, sem mexer nas anotações. Use para reposicionar o recorte.
+Drags the **selected area** across the screen, without touching the annotations. Use it to reposition the crop.
 
-- Com a cruz ativa, arrastar dentro da área move a área.
-- Com outra ferramenta, arrastar dentro da área desenha.
-- Para mudar o tamanho, arraste os quadradinhos nas bordas e cantos.
+- With the cross active, dragging inside the area moves the area.
+- With any other tool, dragging inside the area draws.
+- To resize, drag the small squares on the edges and corners.
 
-`[imagem: área sendo movida com a cruz (03-mover.png)]`
+`[image: area being moved with the cross (03-move.png)]`
 
-### 3. Mão livre (caneta)
+### 3. Freehand (pen)
 
-Desenho livre, como um marcador. Use para rabiscar, circular algo ou sublinhar.
+Free-hand drawing, like a marker. Use it to scribble, circle something or underline it.
 
-- Atalho: **P**
-- Traço: espessura escolhida em Settings ou com a roda do mouse.
+- Shortcut: **P**
+- Stroke width: set in Settings, or with the mouse wheel.
 
-`[imagem: traço livre em volta de um botão (04-mao-livre.png)]`
+`[image: freehand stroke around a button (04-freehand.png)]`
 
-### 4. Linha
+### 4. Line
 
-Linha reta entre dois pontos. Segure **Shift** para travar em ângulos de 45°.
+A straight line between two points. Hold **Shift** to snap to 45° angles.
 
-- Atalho: **L**
+- Shortcut: **L**
 
-`[imagem: linha apontando um campo (05-linha.png)]`
+`[image: line pointing at a field (05-line.png)]`
 
-### 5. Seta
+### 5. Arrow
 
-Seta com ponta, para indicar algo. Segure **Shift** para travar em 45°.
+An arrow with a head, to point at something. Hold **Shift** to snap to 45°.
 
-- Atalho: **A**
+- Shortcut: **A**
 
-`[imagem: seta apontando para um elemento da tela (06-seta.png)]`
+`[image: arrow pointing at a UI element (06-arrow.png)]`
 
-### 6. Retângulo
+### 6. Rectangle
 
-Contorno retangular para destacar uma área. Segure **Shift** para fazer um quadrado.
+A rectangular outline to highlight an area. Hold **Shift** to draw a square.
 
-- Atalho: **R**
+- Shortcut: **R**
 
-`[imagem: retângulo em volta de um bloco de texto (07-retangulo.png)]`
+`[image: rectangle around a block of text (07-rectangle.png)]`
 
-### 7. Elipse
+### 7. Ellipse
 
-Contorno oval. Segure **Shift** para fazer um círculo.
+An oval outline. Hold **Shift** to draw a circle.
 
-- Atalho: **E**
+- Shortcut: **E**
 
-`[imagem: elipse em volta de um ícone (08-elipse.png)]`
+`[image: ellipse around an icon (08-ellipse.png)]`
 
-### 8. Marca-texto
+### 8. Highlighter
 
-Faixa translúcida, como um marca-texto de papel. Não cobre o conteúdo por completo, então dá para ler o que está embaixo.
+A translucent band, like a paper highlighter. The text underneath stays readable.
 
-- Atalho: **M**
+- Shortcut: **M**
 
-`[imagem: trecho de texto marcado em amarelo (09-marca-texto.png)]`
+`[image: part of a text highlighted in yellow (09-highlighter.png)]`
 
-### 9. Texto
+### 9. Text
 
-Caixa para escrever. Clique na área onde quer o texto e digite.
+A box for typing. Click where you want the text and start typing.
 
-- Atalho: **T**
-- **Enter** confirma. **Shift + Enter** quebra a linha. Clicar fora da caixa também confirma.
-- O texto fica num balão branco com borda roxa, de cantos retos.
-- Tamanho: a roda do mouse muda o tamanho enquanto você digita.
-- Fonte: Inter, embutida no app.
+- Shortcut: **T**
+- **Enter** confirms. **Shift + Enter** starts a new line. Clicking outside the box also confirms.
+- The text sits on a white bubble with a purple border and square corners.
+- Size: the mouse wheel changes the text size while you type.
+- Font: Inter, embedded in the app.
 
-`[imagem: balão de texto na captura (10-texto.png)]`
+`[image: text bubble on the capture (10-text.png)]`
 
-#### Mover um texto já colocado
+#### Moving text you already placed
 
-Depois de confirmar um texto, dá para movê-lo sem refazer:
+After you confirm a text, you can move it without retyping:
 
-1. Passe o mouse sobre o **T** da barra vertical. Aparece um ícone de cruz do lado de fora da barra.
-2. Clique na cruz. A ferramenta de texto continua destacada.
-3. Arraste o texto. Ele fica sempre dentro da área selecionada.
-4. Clique no **T** para voltar a escrever.
+1. Hover over the **T** in the vertical bar. A move (cross) icon appears outside the bar, to its right.
+2. Click the cross. The text tool stays highlighted.
+3. Drag the text. It always stays inside the selected area.
+4. Click the **T** again to go back to typing.
 
-`[imagem: ícone de mover texto aparecendo ao lado do T (11-mover-texto.png)]`
+`[image: move-text icon showing next to the T (11-move-text.png)]`
 
-### 10. Pixelar
+### 10. Pixelate
 
-Borra a região escolhida com um efeito de blocos, para esconder informações sensíveis (nomes, e-mails, números).
+Blurs the chosen region with a block effect, to hide sensitive information (names, emails, numbers).
 
-- Atalho: **B**
+- Shortcut: **B**
 
-`[imagem: e-mail pixelado (12-pixelar.png)]`
+`[image: pixelated email address (12-pixelate.png)]`
 
-### 11. Número (contador)
+### 11. Number (counter)
 
-Coloca marcadores numerados (1, 2, 3…) para explicar passos. A numeração se ajusta sozinha quando você apaga um número.
+Places numbered markers (1, 2, 3…) to explain steps. Numbering adjusts by itself when you delete one.
 
-- Atalho: **N**
-- Cores disponíveis: vermelho, verde, azul e roxo.
+- Shortcut: **N**
+- Available colors: red, green, blue and purple.
 
-`[imagem: passos 1, 2 e 3 numerados (13-numero.png)]`
+`[image: steps 1, 2 and 3 numbered (13-number.png)]`
 
-### 12. Cor
+### 12. Color
 
-A bolinha colorida abre a paleta de cores, à esquerda da barra. Cores: amarelo, azul, verde, vermelho, preto, branco e roxo (Snov.io).
+The colored dot opens the color palette, to the left of the bar. Colors: yellow, blue, green, red, black, white and purple (Snov.io).
 
-- Atalhos **1 a 6** escolhem as seis primeiras cores.
-- A cor escolhida vale para as próximas anotações.
+- Keys **1 to 6** pick the first six colors.
+- The selected color applies to the next annotations.
 
-`[imagem: paleta aberta ao lado da barra (14-cor.png)]`
+`[image: palette open next to the bar (14-color.png)]`
 
-### 13. Desfazer
+### 13. Undo
 
-Desfaz a última ação. Atalho: **Ctrl + Z**. Para refazer, use **Ctrl + Y**.
+Undoes the last action. Shortcut: **Ctrl + Z**. To redo, use **Ctrl + Y**.
 
-`[imagem: seta de desfazer (15-desfazer.png)]`
+`[image: undo arrow (15-undo.png)]`
 
-## Barra horizontal: ações
+## Horizontal bar: actions
 
-### Copiar
+### Copy
 
-Copia a captura, com as anotações, para a área de transferência. Depois é só colar (**Ctrl + V**) em qualquer lugar. A captura fecha em seguida.
+Copies the capture, with its annotations, to the clipboard. Then paste (**Ctrl + V**) anywhere. The capture closes right after.
 
-- Atalho: **Ctrl + C**
+- Shortcut: **Ctrl + C**
 
-### Salvar
+### Save
 
-Abre a janela "Salvar como" com o formato padrão das configurações (JPEG ou PNG). A extensão que você digitar no nome define o formato final. A captura fecha depois de salvar.
+Opens the "Save as" dialog with the default format from Settings (JPEG or PNG). The extension you type in the file name sets the final format. The capture closes after saving.
 
-- Atalho: **Ctrl + S**
+- Shortcut: **Ctrl + S**
 
-`[imagem: janela Salvar como (16-salvar.png)]`
+`[image: Save as dialog (16-save.png)]`
 
-### Fechar (X)
+### Close (X)
 
-Descarta a captura sem copiar nem salvar.
+Discards the capture without copying or saving it.
 
-- Atalho: **Esc**
+- Shortcut: **Esc**
 
-## Apagar
+## Deleting
 
-- **Um texto:** use o ícone de mover texto (ao lado do T), clique no texto e pressione **Delete**.
-- **Tudo de uma vez:** use a borracha (primeiro botão da barra vertical).
-- **Último passo:** **Ctrl + Z** desfaz a última ação.
+- **A text:** use the move-text icon (next to the T), click the text and press **Delete**.
+- **Everything at once:** use the eraser (first button in the vertical bar).
+- **Last step:** **Ctrl + Z** undoes the last action.
 
-## Dicas
+## Tips
 
-- **Mover a seleção sem mexer nos desenhos:** use a cruz.
-- **Desenhar com precisão:** segure **Shift** nas ferramentas de linha, seta, retângulo e elipse.
-- **Não perder um recorte:** clicar fora da área não cancela a seleção.
-- **Atalhos das ferramentas** só funcionam enquanto você não está digitando um texto.
+- **Move the selection without touching the drawings:** use the cross.
+- **Draw precisely:** hold **Shift** with the line, arrow, rectangle and ellipse tools.
+- **Don't lose a crop:** clicking outside the area does not cancel the selection.
+- **Tool shortcuts** only work when you are not typing a text.
