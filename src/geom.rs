@@ -16,7 +16,7 @@ pub struct Rect {
 }
 
 /// Distância em pixels entre a seleção e as barras de ícones (PRD F7).
-pub const GAP: i32 = 8;
+pub const GAP: i32 = 16;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Handle {

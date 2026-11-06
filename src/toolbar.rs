@@ -318,7 +318,12 @@ fn draw_icon(cv: &Canvas, b: Button, r: Rect, current: Color, active: bool, k: &
         }
         Button::Rect => cv.stroke_round(q(3.0, 5.0, 18.0, 14.0), 3.0 * sc, ink, w),
         Button::Ellipse => cv.stroke_ellipse(q(3.0, 5.0, 18.0, 14.0), ink, w),
-        Button::Marker => cv.fill_round(q(4.0, 9.5, 16.0, 5.0), 2.0 * sc, argb(0xDD, 0xFACC15)),
+        Button::Marker => {
+            // Amarelo vivo com contorno âmbar, para a faixa aparecer no fundo claro e no escuro.
+            let bar = q(3.5, 9.0, 17.0, 6.0);
+            cv.fill_round(bar, 2.0 * sc, argb(0xFF, 0xFFD000));
+            cv.stroke_round(bar, 2.0 * sc, argb(0xFF, 0xB8860B), (1.0 * sc).max(1.0));
+        }
         Button::Text => {
             cv.polyline(&[p(5.0, 6.0), p(5.0, 4.0), p(19.0, 4.0), p(19.0, 6.0)], ink, w);
             cv.line(p(12.0, 4.0), p(12.0, 20.0), ink, w);

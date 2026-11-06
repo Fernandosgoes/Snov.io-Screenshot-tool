@@ -58,7 +58,7 @@ const H: i32 = 528;
 const HEADER_H: i32 = 56;
 
 // Cores da marca (0xRRGGBB).
-const BG: u32 = 0xF6F5FB;
+const BG: u32 = 0xFFFFFF;
 const WHITE: u32 = 0xFFFFFF;
 const BORDER: u32 = 0xB9B2D8;
 const CHIP_BORDER: u32 = 0xD6D0EA;
@@ -69,10 +69,9 @@ const CHIP_OFF: u32 = 0xF1EFF8;
 const CHIP_OFF_INK: u32 = 0x4A4670;
 const TRACK: u32 = 0xE4E1F0;
 const PLACEHOLDER: u32 = 0xA29DC0;
-const FIELD_BG: u32 = 0xFAF9FD;
+const FIELD_BG: u32 = 0xFFFFFF;
 
 // Geometria em pixels lógicos: (x, y, largura, altura).
-const CARD: (i32, i32, i32, i32) = (16, 64, 408, 400);
 const HK_CHIPS: [(i32, i32, i32, i32); 4] = [(32, 98, 86, 30), (126, 98, 86, 30), (220, 98, 86, 30), (314, 98, 86, 30)];
 const CUSTOM_FIELD: (i32, i32, i32, i32) = (32, 136, 368, 24);
 const SWATCH_Y: i32 = 197;
@@ -316,8 +315,6 @@ fn paint(hwnd: HWND) {
         if let Some(cv) = Canvas::from_hdc(hdc) {
             // Borda da janela e card branco.
             cv.stroke_round(sr((0, 0, W, H), s), 8.0 * s, argb(0xFF, BORDER), s.max(1.0));
-            cv.fill_round(sr(CARD, s), 4.0 * s, argb(0xFF, WHITE));
-            cv.stroke_round(sr(CARD, s), 4.0 * s, argb(0xFF, BORDER), s.max(1.0));
 
             // Chips de atalho.
             for (i, r) in HK_CHIPS.iter().enumerate() {
