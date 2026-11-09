@@ -18,32 +18,23 @@ use windows::Win32::Graphics::Gdi::{
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Controls::{ICC_HOTKEY_CLASS, INITCOMMONCONTROLSEX, InitCommonControlsEx};
 use windows::Win32::UI::HiDpi::GetDpiForSystem;
-use windows::Win32::UI::Input::KeyboardAndMouse::{EnableWindow, ReleaseCapture, SetCapture};
+use windows::Win32::UI::Input::KeyboardAndMouse::{GetKeyState, ReleaseCapture, SetCapture};
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DestroyWindow, FindWindowW, GetDlgItem, HMENU, IDC_ARROW,
+    CreateWindowExW, DefWindowProcW, DestroyWindow, FindWindowW, IDC_ARROW,
     LoadCursorW, MB_ICONINFORMATION, MB_OK, MessageBoxW, RegisterClassW, SetForegroundWindow,
-    ShowWindow, SW_HIDE, SW_SHOW, SYSTEM_PARAMETERS_INFO_ACTION,
-    SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, SendMessageW, SystemParametersInfoW, WINDOW_EX_STYLE,
-    WINDOW_STYLE, WM_CLOSE, WM_DESTROY, WM_PAINT, WM_SETFONT, WNDCLASSW, WS_CHILD, WS_POPUP,
-    WS_TABSTOP, WS_VISIBLE,
+    ShowWindow, SW_SHOW, SYSTEM_PARAMETERS_INFO_ACTION,
+    SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, SystemParametersInfoW, WINDOW_EX_STYLE,
+    WM_CLOSE, WM_DESTROY, WM_PAINT, WNDCLASSW, WS_POPUP,
+
 };
 use windows::core::{PCWSTR, w};
 
 const CLASS: PCWSTR = w!("ScreenshotterSettings");
 
-/// Controle nativo de captura de tecla (só visível quando "Custom" está escolhido).
-const ID_CUSTOM: i32 = 107;
-// Campo de captura de tecla (classe nativa do Windows, msctls_hotkey32).
-const WM_SETHOTKEY: u32 = 0x0032;
-const WM_GETHOTKEY: u32 = 0x0033;
-// Bits de modificador do campo de tecla (HOTKEYF_*), diferentes dos MOD_* do RegisterHotKey.
-const HKF_SHIFT: usize = 0x01;
-const HKF_CONTROL: usize = 0x02;
-const HKF_ALT: usize = 0x04;
-
 const WM_ERASEBKGND: u32 = 0x0014;
 const WM_NCHITTEST: u32 = 0x0084;
 const WM_KEYDOWN: u32 = 0x0100;
+const WM_SYSKEYDOWN: u32 = 0x0104;
 const WM_MOUSEMOVE: u32 = 0x0200;
 const WM_LBUTTONDOWN: u32 = 0x0201;
 const WM_LBUTTONUP: u32 = 0x0202;
@@ -106,6 +97,10 @@ static COLOR: AtomicUsize = AtomicUsize::new(3);
 static FMT: AtomicUsize = AtomicUsize::new(0);
 static STYLE: AtomicUsize = AtomicUsize::new(0);
 static STARTUP: AtomicBool = AtomicBool::new(false);
+/// Campo "Custom": esperando a próxima tecla, e a tecla/modificadores capturados (vk 0 = nenhuma).
+static CAPTURING: AtomicBool = AtomicBool::new(false);
+static CUSTOM_VK: AtomicU32 = AtomicU32::new(0);
+static CUSTOM_MODS: AtomicU32 = AtomicU32::new(0);
 /// Janela principal (dona do atalho global): precisa ser reregistrada ao salvar.
 static MAIN: AtomicIsize = AtomicIsize::new(0);
 /// Escala de DPI (bits de f32), para desenhar em pixels reais.
@@ -137,34 +132,27 @@ const COLORS: [(Color, &str); 7] = [
     (Color::Purple, "Purple"),
 ];
 
-/// Formato do campo de tecla: byte baixo = tecla virtual, byte alto = modificadores HOTKEYF_*.
-fn to_control(h: Hotkey) -> usize {
-    let mut f = 0;
-    if h.mods & 4 != 0 {
-        f |= HKF_SHIFT;
+/// Guarda a tecla pressionada no campo "Custom" (modificadores lidos do estado atual do teclado).
+fn capture_key(hwnd: HWND, vk: u32) {
+    let modifier_only = matches!(vk, 0x10..=0x12 | 0x5B | 0x5C | 0xA0..=0xA5);
+    if modifier_only {
+        return;
     }
-    if h.mods & 2 != 0 {
-        f |= HKF_CONTROL;
-    }
-    if h.mods & 1 != 0 {
-        f |= HKF_ALT;
-    }
-    (h.vk as usize & 0xFF) | (f << 8)
-}
-
-fn from_control(v: usize) -> Hotkey {
-    let f = (v >> 8) & 0xFF;
+    let down = |k: i32| unsafe { GetKeyState(k) < 0 };
     let mut mods = 0;
-    if f & HKF_SHIFT != 0 {
-        mods |= 4;
+    if down(0x12) {
+        mods |= 1; // Alt
     }
-    if f & HKF_CONTROL != 0 {
-        mods |= 2;
+    if down(0x11) {
+        mods |= 2; // Ctrl
     }
-    if f & HKF_ALT != 0 {
-        mods |= 1;
+    if down(0x10) {
+        mods |= 4; // Shift
     }
-    Hotkey { mods, vk: (v & 0xFF) as u32 }
+    CUSTOM_VK.store(vk, Ordering::Relaxed);
+    CUSTOM_MODS.store(mods, Ordering::Relaxed);
+    CAPTURING.store(false, Ordering::Relaxed);
+    redraw(hwnd);
 }
 
 /// Aceita só combinações que o Windows aceita como atalho global e que não viram
@@ -178,8 +166,10 @@ fn valid_custom(h: Hotkey) -> Result<(), &'static str> {
     if modifier_only {
         return Err("Pick a key other than Ctrl, Alt or Shift alone.");
     }
-    let f_key = (0x70..=0x87).contains(&h.vk);
-    if h.mods == 0 && !f_key {
+    // Teclas que não digitam caracteres: podem ser usadas sozinhas (F1-F24, Insert, Delete,
+    // Home, End, PgUp, PgDn, PrtScn, Pause, ScrLk).
+    let alone_ok = matches!(h.vk, 0x70..=0x87 | 0x13 | 0x21..=0x24 | 0x2C..=0x2E | 0x91);
+    if h.mods == 0 && !alone_ok {
         return Err("Use Ctrl, Alt or Shift with the key (or an F key).");
     }
     Ok(())
@@ -187,10 +177,6 @@ fn valid_custom(h: Hotkey) -> Result<(), &'static str> {
 
 fn scale() -> f32 {
     f32::from_bits(SCALE.load(Ordering::Relaxed))
-}
-
-fn send(h: HWND, msg: u32, wp: WPARAM, lp: LPARAM) -> LRESULT {
-    unsafe { SendMessageW(h, msg, Some(wp), Some(lp)) }
 }
 
 fn wide(s: &str) -> Vec<u16> {
@@ -222,14 +208,37 @@ fn first_hit(p: (f32, f32), rects: &[(i32, i32, i32, i32)]) -> Option<usize> {
     rects.iter().position(|r| inside(p, *r))
 }
 
-/// Mostra o campo de tecla só quando "Custom" está escolhido.
-fn sync_custom(hwnd: HWND) {
-    let show = HK.load(Ordering::Relaxed) == CUSTOM_INDEX;
-    unsafe {
-        let custom = GetDlgItem(Some(hwnd), ID_CUSTOM).unwrap_or_default();
-        let _ = ShowWindow(custom, if show { SW_SHOW } else { SW_HIDE });
-        let _ = EnableWindow(custom, show);
+/// Nome legível de uma tecla virtual (usado no campo "Custom").
+fn key_name(vk: u32, mods: u32) -> String {
+    let mut out = String::new();
+    if mods & 2 != 0 {
+        out.push_str("Ctrl+");
     }
+    if mods & 1 != 0 {
+        out.push_str("Alt+");
+    }
+    if mods & 4 != 0 {
+        out.push_str("Shift+");
+    }
+    let base = match vk {
+        0x70..=0x87 => format!("F{}", vk - 0x6F),
+        0x30..=0x39 | 0x41..=0x5A => char::from(vk as u8).to_string(),
+        0x2D => "Insert".into(),
+        0x2E => "Delete".into(),
+        0x24 => "Home".into(),
+        0x23 => "End".into(),
+        0x21 => "PageUp".into(),
+        0x22 => "PageDown".into(),
+        0x2C => "PrtScn".into(),
+        0x13 => "Pause".into(),
+        0x91 => "ScrLk".into(),
+        0x08 => "Backspace".into(),
+        0x20 => "Space".into(),
+        0x09 => "Tab".into(),
+        _ => format!("VK 0x{vk:02X}"),
+    };
+    out.push_str(&base);
+    out
 }
 
 fn redraw(hwnd: HWND) {
@@ -320,10 +329,10 @@ fn paint(hwnd: HWND) {
             for (i, r) in HK_CHIPS.iter().enumerate() {
                 chip(&cv, *r, s, i == hk);
             }
-            if hk != CUSTOM_INDEX {
-                cv.fill_round(sr(CUSTOM_FIELD, s), 3.0 * s, argb(0xFF, FIELD_BG));
-                cv.stroke_round(sr(CUSTOM_FIELD, s), 3.0 * s, argb(0xFF, CHIP_BORDER), s.max(1.0));
-            }
+            let capturing = CAPTURING.load(Ordering::Relaxed);
+            let border = if hk == CUSTOM_INDEX && capturing { ACCENT } else { CHIP_BORDER };
+            cv.fill_round(sr(CUSTOM_FIELD, s), 3.0 * s, argb(0xFF, FIELD_BG));
+            cv.stroke_round(sr(CUSTOM_FIELD, s), 3.0 * s, argb(0xFF, border), s.max(1.0));
 
             // Bolinhas de cor; a escolhida tem anel roxo.
             for (i, (c, _)) in COLORS.iter().enumerate() {
@@ -397,6 +406,16 @@ fn paint(hwnd: HWND) {
         }
         if hk != CUSTOM_INDEX {
             text(hdc, (42, 136, 340, 24), s, "Enabled when Custom is selected", 12, false, cref(PLACEHOLDER), DT_LEFT);
+        } else if CAPTURING.load(Ordering::Relaxed) {
+            text(hdc, (42, 136, 340, 24), s, "Press the key combination...", 12, false, cref(ACCENT), DT_LEFT);
+        } else {
+            let vk = CUSTOM_VK.load(Ordering::Relaxed);
+            let (label, color) = if vk == 0 {
+                ("Click here, then press a key".to_string(), PLACEHOLDER)
+            } else {
+                (key_name(vk, CUSTOM_MODS.load(Ordering::Relaxed)), INK)
+            };
+            text(hdc, (42, 136, 340, 24), s, &label, 12, true, cref(color), DT_LEFT);
         }
         text(hdc, (200, 172, 200, 16), s, COLORS[col].1, 12, false, cref(MUTED), DT_RIGHT);
         text(hdc, VALUE_TEXT[0], s, &format!("{} px", slider(0)), 12, true, dark, DT_LEFT);
@@ -434,9 +453,17 @@ fn chip(cv: &Canvas, r: (i32, i32, i32, i32), s: f32, selected: bool) {
 
 /// Clique (no botão do mouse já solto) em qualquer controle desenhado.
 fn click(hwnd: HWND, p: (f32, f32)) {
+    if HK.load(Ordering::Relaxed) == CUSTOM_INDEX && inside(p, CUSTOM_FIELD) {
+        CAPTURING.store(true, Ordering::Relaxed);
+        redraw(hwnd);
+        return;
+    }
+    // Clicar em qualquer outra coisa cancela a captura.
+    if CAPTURING.swap(false, Ordering::Relaxed) {
+        redraw(hwnd);
+    }
     if let Some(i) = first_hit(p, &HK_CHIPS) {
         HK.store(i, Ordering::Relaxed);
-        sync_custom(hwnd);
         redraw(hwnd);
         return;
     }
@@ -530,6 +557,19 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) -> 
             click(hwnd, mouse_xy(lp));
             LRESULT(0)
         }
+        WM_SYSKEYDOWN if CAPTURING.load(Ordering::Relaxed) => {
+            capture_key(hwnd, wp.0 as u32);
+            LRESULT(0)
+        }
+        WM_KEYDOWN if CAPTURING.load(Ordering::Relaxed) => {
+            if wp.0 == VK_ESCAPE_KEY {
+                CAPTURING.store(false, Ordering::Relaxed);
+                redraw(hwnd);
+            } else {
+                capture_key(hwnd, wp.0 as u32);
+            }
+            LRESULT(0)
+        }
         WM_KEYDOWN => {
             match wp.0 {
                 VK_RETURN_KEY => {
@@ -557,9 +597,9 @@ fn save(hwnd: HWND) -> bool {
     let mut s = Settings::load(&path);
     let (hk, _) = HOTKEYS[HK.load(Ordering::Relaxed).min(HOTKEYS.len() - 1)];
     s.hotkey = hk;
+    CAPTURING.store(false, Ordering::Relaxed);
     if s.hotkey == HotkeyChoice::Custom {
-        let custom = unsafe { GetDlgItem(Some(hwnd), ID_CUSTOM).unwrap_or_default() };
-        let h = from_control(send(custom, WM_GETHOTKEY, WPARAM(0), LPARAM(0)).0 as usize);
+        let h = Hotkey { mods: CUSTOM_MODS.load(Ordering::Relaxed), vk: CUSTOM_VK.load(Ordering::Relaxed) };
         if let Err(msg) = valid_custom(h) {
             info(hwnd, msg);
             return false;
@@ -619,6 +659,10 @@ pub fn open(main: HWND) {
     VALS[0].store(cur.stroke_width.clamp(STROKE_RANGE.0, STROKE_RANGE.1), Ordering::Relaxed);
     VALS[1].store(cur.text_size.clamp(TEXT_RANGE.0, TEXT_RANGE.1), Ordering::Relaxed);
     DRAG.store(9, Ordering::Relaxed);
+    CAPTURING.store(false, Ordering::Relaxed);
+    let (cvk, cmods) = cur.custom_hotkey.map_or((0, 0), |h| (h.vk, h.mods));
+    CUSTOM_VK.store(cvk, Ordering::Relaxed);
+    CUSTOM_MODS.store(cmods, Ordering::Relaxed);
 
     unsafe {
         let hinst = GetModuleHandleW(None).unwrap_or_default();
@@ -674,65 +718,9 @@ pub fn open(main: HWND) {
         };
         let _ = SetWindowRgn(hwnd, Some(CreateRoundRectRgn(0, 0, ww + 1, wh + 1, sc(16), sc(16))), true);
 
-        let font = CreateFontW(
-            -sc(12),
-            0,
-            0,
-            0,
-            400,
-            0,
-            0,
-            0,
-            FONT_CHARSET(1),
-            FONT_OUTPUT_PRECISION(0),
-            FONT_CLIP_PRECISION(0),
-            FONT_QUALITY(5),
-            0,
-            w!("Segoe UI"),
-        );
-        let custom = child(hwnd, w!("msctls_hotkey32"), "", WS_TABSTOP.0, 0, ID_CUSTOM, CUSTOM_FIELD, s, font.0 as usize);
-        if let Some(h) = cur.custom_hotkey {
-            send(custom, WM_SETHOTKEY, WPARAM(to_control(h)), LPARAM(0));
-        }
-        sync_custom(hwnd);
 
         let _ = ShowWindow(hwnd, SW_SHOW);
         let _ = SetForegroundWindow(hwnd);
     }
 }
 
-/// Controle nativo filho, posicionado em coordenadas lógicas.
-fn child(
-    parent: HWND,
-    class: PCWSTR,
-    text: &str,
-    style: u32,
-    ex: u32,
-    id: i32,
-    r: (i32, i32, i32, i32),
-    s: f32,
-    font: usize,
-) -> HWND {
-    let rc = rect_px(r, s);
-    let t = wide(text);
-    unsafe {
-        let hinst = GetModuleHandleW(None).unwrap_or_default();
-        let c = CreateWindowExW(
-            WINDOW_EX_STYLE(ex),
-            class,
-            PCWSTR(t.as_ptr()),
-            WS_CHILD | WS_VISIBLE | WINDOW_STYLE(style),
-            rc.left,
-            rc.top,
-            rc.right - rc.left,
-            rc.bottom - rc.top,
-            Some(parent),
-            Some(HMENU(id as usize as *mut _)),
-            Some(hinst.into()),
-            None,
-        )
-        .unwrap_or_default();
-        send(c, WM_SETFONT, WPARAM(font), LPARAM(1));
-        c
-    }
-}
