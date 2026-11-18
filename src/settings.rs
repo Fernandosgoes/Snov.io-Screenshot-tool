@@ -29,7 +29,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 use windows::core::{PCWSTR, w};
 
-const CLASS: PCWSTR = w!("ScreenshotterSettings");
+const CLASS: PCWSTR = w!("SnovioSettings");
 
 const WM_ERASEBKGND: u32 = 0x0014;
 const WM_NCHITTEST: u32 = 0x0084;
@@ -602,7 +602,7 @@ fn save(hwnd: HWND) -> bool {
     if let Some(w) = warn {
         info(hwnd, w);
     } else if plain_char {
-        info(hwnd, "This key also types a character. While Screenshotter is running, other programs won't receive it when pressed alone.");
+        info(hwnd, "This key also types a character. While Snovio Screenshot Tool is running, other programs won't receive it when pressed alone.");
     }
     true
 }
@@ -610,7 +610,7 @@ fn save(hwnd: HWND) -> bool {
 fn info(hwnd: HWND, text: &str) {
     let t = wide(text);
     unsafe {
-        MessageBoxW(Some(hwnd), PCWSTR(t.as_ptr()), w!("Screenshotter"), MB_OK | MB_ICONINFORMATION);
+        MessageBoxW(Some(hwnd), PCWSTR(t.as_ptr()), w!("Snovio Screenshot Tool"), MB_OK | MB_ICONINFORMATION);
     }
 }
 
@@ -675,7 +675,7 @@ pub fn open(main: HWND) {
         let x = wa.left + (wa.right - wa.left - ww) / 2;
         let y = wa.top + (wa.bottom - wa.top - wh) / 2;
 
-        let title = wide("Screenshotter — Settings");
+        let title = wide("Snovio Screenshot Tool — Settings");
         // Janela sem moldura padrão: o desenho traz o card, a borda e os cantos arredondados.
         let hwnd = match CreateWindowExW(
             WINDOW_EX_STYLE(0x0000_0080), // WS_EX_TOOLWINDOW: sem botão na barra de tarefas

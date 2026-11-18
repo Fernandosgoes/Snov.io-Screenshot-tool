@@ -1,5 +1,5 @@
 [package]
-name = "Screenshotter"
+name = "Snovio-Screenshot-Tool"
 version = "1.0.0"
 build = "build.rs"
 edition = "2024"

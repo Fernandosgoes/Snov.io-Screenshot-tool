@@ -40,7 +40,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 use windows::core::{PCWSTR, w};
 
-const CLASS: PCWSTR = w!("ScreenshotterOverlay");
+const CLASS: PCWSTR = w!("SnovioOverlay");
 /// Metade do lado dos quadradinhos das alças da seleção, em pixels.
 const HANDLE_HALF: i32 = 4;
 /// MK_SHIFT do WM_MOUSEMOVE (wParam), valor fixo do Win32.
@@ -126,7 +126,7 @@ pub fn create() -> windows::core::Result<HWND> {
         let hwnd = CreateWindowExW(
             WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
             CLASS,
-            w!("Screenshotter"),
+            w!("Snovio Screenshot Tool"),
             WS_POPUP,
             origin.x,
             origin.y,

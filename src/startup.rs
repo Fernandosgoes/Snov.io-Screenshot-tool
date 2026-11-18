@@ -4,7 +4,7 @@
 use std::process::Command;
 
 const KEY: &str = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
-const NAME: &str = "Screenshotter";
+const NAME: &str = "Snovio Screenshot Tool";
 
 /// Verdadeiro se o valor de inicialização automática existe. Lê o registro direto
 /// (rápido); chamar o reg.exe aqui atrasava a abertura das configurações.

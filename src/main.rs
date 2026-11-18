@@ -1,4 +1,4 @@
-﻿//! Screenshotter: capturador de tela para Windows, sem rede.
+﻿//! Snovio Screenshot Tool: capturador de tela para Windows, sem rede.
 //! Ponto de entrada: DPI por monitor, instância única, configurações, janela principal
 //! oculta, bandeja, atalho global e loop de mensagens.
 
@@ -36,8 +36,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 use windows::core::{PCWSTR, w};
 
-const MAIN_CLASS: PCWSTR = w!("ScreenshotterMain");
-const APP_NAME: PCWSTR = w!("Screenshotter");
+const MAIN_CLASS: PCWSTR = w!("SnovioMain");
+const APP_NAME: PCWSTR = w!("Snovio Screenshot Tool");
 
 pub(crate) fn settings_path() -> PathBuf {
     std::env::current_exe()
@@ -137,7 +137,7 @@ fn main() {
 
     // Instância única: se já há uma rodando, a segunda sai sem fazer nada.
     let _single = unsafe {
-        let h = CreateMutexW(None, true, w!("Screenshotter.SingleInstance"));
+        let h = CreateMutexW(None, true, w!("SnovioScreenshotTool.SingleInstance"));
         match h {
             Ok(h) if GetLastError() != ERROR_ALREADY_EXISTS => Some(h),
             _ => return,

@@ -27,7 +27,7 @@ fn data(hwnd: HWND) -> NOTIFYICONDATAW {
         uCallbackMessage: WM_APP_TRAY,
         ..Default::default()
     };
-    let tip: Vec<u16> = "Screenshotter".encode_utf16().collect();
+    let tip: Vec<u16> = "Snovio Screenshot Tool".encode_utf16().collect();
     nid.szTip[..tip.len()].copy_from_slice(&tip);
     nid
 }

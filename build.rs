@@ -28,9 +28,9 @@ fn main() {
 
     // Objeto COFF com o ícone, empacotado numa biblioteca estática para o linker.
     run("windres", &["-i", "app.rc", "-O", "coff", "-o", "app.o"]);
-    run("ar", &["rcs", "libScreenshotter_res.a", "app.o"]);
+    run("ar", &["rcs", "libSnovioScreenshotTool_res.a", "app.o"]);
     println!("cargo:rustc-link-search=native={}", out.display());
     // whole-archive: o objeto de recurso não tem símbolos referenciados pelo código, então
     // sem isso o linker descarta o ícone da biblioteca e o .exe fica sem ícone.
-    println!("cargo:rustc-link-lib=static:+whole-archive=Screenshotter_res");
+    println!("cargo:rustc-link-lib=static:+whole-archive=SnovioScreenshotTool_res");
 }
