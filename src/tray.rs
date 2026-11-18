@@ -61,9 +61,9 @@ pub fn remove(hwnd: HWND) {
 pub fn show_menu(hwnd: HWND) {
     unsafe {
         let Ok(menu) = CreatePopupMenu() else { return };
-        let _ = AppendMenuW(menu, MF_STRING, ID_MENU_SETTINGS, w!("Configurações"));
+        let _ = AppendMenuW(menu, MF_STRING, ID_MENU_SETTINGS, w!("Settings"));
         let _ = AppendMenuW(menu, MF_SEPARATOR, 0, None);
-        let _ = AppendMenuW(menu, MF_STRING, ID_MENU_EXIT, w!("Sair"));
+        let _ = AppendMenuW(menu, MF_STRING, ID_MENU_EXIT, w!("Exit"));
         let mut pt = POINT::default();
         let _ = GetCursorPos(&mut pt);
         // Necessário para o menu fechar ao clicar fora.

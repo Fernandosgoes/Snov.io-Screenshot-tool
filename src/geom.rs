@@ -16,7 +16,7 @@ pub struct Rect {
 }
 
 /// Distância em pixels entre a seleção e as barras de ícones (PRD F7).
-pub const GAP: i32 = 8;
+pub const GAP: i32 = 16;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Handle {
@@ -90,6 +90,26 @@ impl Rect {
             .into_iter()
             .find(|(_, hp)| (hp.x - p.x).abs() <= tol && (hp.y - p.y).abs() <= tol)
             .map(|(h, _)| h)
+    }
+
+    /// Alça de borda (sem canto) sob o ponto, com tolerância.
+    pub fn hit_edge(&self, p: Point, tol: i32) -> Option<Handle> {
+        let in_x = p.x >= self.x - tol && p.x <= self.right() + tol;
+        let in_y = p.y >= self.y - tol && p.y <= self.bottom() + tol;
+        if !(in_x && in_y) {
+            return None;
+        }
+        if (p.y - self.y).abs() <= tol {
+            Some(Handle::N)
+        } else if (p.y - self.bottom()).abs() <= tol {
+            Some(Handle::S)
+        } else if (p.x - self.x).abs() <= tol {
+            Some(Handle::W)
+        } else if (p.x - self.right()).abs() <= tol {
+            Some(Handle::E)
+        } else {
+            None
+        }
     }
 
     /// Move só as bordas ligadas à alça; a borda oposta fica parada.
@@ -171,6 +191,8 @@ pub fn dimension_label(r: Rect) -> String {
 pub struct BarLayout {
     pub vertical: Rect,
     pub horizontal: Rect,
+    /// Ícone de mover texto, ao lado do T (calculado pela barra de ferramentas).
+    pub text_move: Rect,
 }
 
 /// Posiciona as barras (PRD F7):
@@ -199,6 +221,7 @@ pub fn layout_bars(sel: Rect, screen: Rect, v_items: i32, h_items: i32, item: i3
     BarLayout {
         vertical: shift_inside(Rect { x: vx, y: vy, w: vw, h: vh }, screen),
         horizontal: shift_inside(Rect { x: hx, y: hy, w: hw, h: hh }, screen),
+        text_move: Rect { x: 0, y: 0, w: 0, h: 0 },
     }
 }
 

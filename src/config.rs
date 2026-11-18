@@ -5,7 +5,9 @@ use std::path::Path;
 pub enum HotkeyChoice {
     #[default]
     ShiftBackspace,
+    /// Atalho antigo (PrtScn puro). Não aparece mais na janela, mas continua aceito.
     PrtScn,
+    ShiftInsert,
     ShiftPrtScn,
     /// Combinação escolhida pelo usuário (ver `Settings::custom_hotkey`).
     Custom,
@@ -17,6 +19,14 @@ pub enum ImageFormat {
     #[default]
     Jpg,
     Png,
+}
+
+/// Estilo visual da barra de ferramentas. Conservadora é o padrão (barra clara e arredondada).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UiStyle {
+    #[default]
+    Conservadora,
+    Moderna,
 }
 
 /// Atalho personalizado: `mods` usa os bits de MOD_ALT (1), MOD_CONTROL (2) e MOD_SHIFT (4);
@@ -35,16 +45,19 @@ pub enum Color {
     Red,
     Black,
     White,
+    /// Roxo da marca Snov.io (#6F55E8).
+    Purple,
 }
 
 impl Color {
-    pub const ALL: [Color; 6] = [
+    pub const ALL: [Color; 7] = [
         Color::Yellow,
         Color::Blue,
         Color::Green,
         Color::Red,
         Color::Black,
         Color::White,
+        Color::Purple,
     ];
 
     /// Cor em formato COLORREF do Win32 (0x00BBGGRR).
@@ -56,6 +69,7 @@ impl Color {
             Color::Red => 0x0000_00FF,
             Color::Black => 0x0000_0000,
             Color::White => 0x00FF_FFFF,
+            Color::Purple => 0x00E8_556F,
         }
     }
 }
@@ -69,11 +83,14 @@ pub struct Settings {
     pub start_with_windows: bool,
     pub stroke_width: u32,
     pub text_size: u32,
+    /// Última cor usada na captura: é lembrada para a próxima.
     pub default_color: Color,
     /// Qualidade do JPEG ao salvar (1 a 100). Menor = arquivo mais leve.
     pub jpeg_quality: u8,
     /// Formato padrão do "Salvar como".
     pub save_format: ImageFormat,
+    /// Estilo visual da barra de ferramentas.
+    pub ui_style: UiStyle,
 }
 
 impl Default for Settings {
@@ -87,6 +104,7 @@ impl Default for Settings {
             default_color: Color::Red,
             jpeg_quality: 80,
             save_format: ImageFormat::Jpg,
+            ui_style: UiStyle::Conservadora,
         }
     }
 }
@@ -139,6 +157,17 @@ mod tests {
         let s = Settings { save_format: ImageFormat::Png, ..Settings::default() };
         s.save(&p).unwrap();
         assert_eq!(Settings::load(&p).save_format, ImageFormat::Png);
+    }
+
+    #[test]
+    fn ui_style_defaults_to_conservadora_and_round_trips() {
+        assert_eq!(Settings::default().ui_style, UiStyle::Conservadora);
+        let dir = std::env::temp_dir().join("shot_cfg_style");
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("settings.json");
+        let s = Settings { ui_style: UiStyle::Moderna, ..Settings::default() };
+        s.save(&p).unwrap();
+        assert_eq!(Settings::load(&p).ui_style, UiStyle::Moderna);
     }
 
     #[test]

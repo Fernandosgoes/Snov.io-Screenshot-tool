@@ -10,6 +10,7 @@ mod config;
 mod draw;
 mod editor;
 mod export;
+mod fonts;
 mod geom;
 mod gfx;
 mod hotkey;
@@ -131,6 +132,7 @@ fn main() {
         let _ = PeekMessageW(&mut m, None, 0, 0, PM_NOREMOVE);
     }
 
+    fonts::load();
     log::set_debug(std::env::args().any(|a| a == "--debug"));
 
     // Instância única: se já há uma rodando, a segunda sai sem fazer nada.
@@ -186,13 +188,13 @@ fn main() {
         ) {
             Ok(h) => h,
             Err(_) => {
-                message("Não foi possível criar a janela principal.");
+                message("Could not create the main window.");
                 return;
             }
         };
 
         if overlay::create().is_err() {
-            message("Não foi possível criar a janela de captura.");
+            message("Could not create the capture window.");
             return;
         }
         let _ = tray::add(hwnd);
@@ -204,9 +206,6 @@ fn main() {
 
         let mut msg = MSG::default();
         while GetMessageW(&mut msg, None, 0, 0).as_bool() {
-            if settings::handle_dialog_message(&msg) {
-                continue;
-            }
             let _ = TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }

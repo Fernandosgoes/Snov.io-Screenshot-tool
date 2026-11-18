@@ -228,8 +228,8 @@ fn wide_z(s: &str) -> Vec<u16> {
 /// Abre "Salvar como". Não existe pasta padrão (decisão do PRD). O formato escolhido nas
 /// configurações vem primeiro no filtro e define a extensão padrão e o nome sugerido.
 pub fn save_dialog(hwnd: HWND, fmt: ImageFormat) -> Option<PathBuf> {
-    let jpg = "Imagem JPEG - leve (*.jpg)\0*.jpg\0";
-    let png = "Imagem PNG - sem perda (*.png)\0*.png\0";
+    let jpg = "JPEG image - smaller file (*.jpg)\0*.jpg\0";
+    let png = "PNG image - lossless (*.png)\0*.png\0";
     let filter_str = match fmt {
         ImageFormat::Jpg => format!("{jpg}{png}\0"),
         ImageFormat::Png => format!("{png}{jpg}\0"),

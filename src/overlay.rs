@@ -7,9 +7,9 @@
 use crate::capture::{self, Capture};
 use crate::config::{Color, Settings};
 use crate::draw;
-use crate::editor::{Editor, TEXT_MIN_W, TEXT_PAD, Tool};
+use crate::editor::{Editor, Tool};
 use crate::export;
-use crate::geom::{Point, Rect, dimension_label};
+use crate::geom::{Handle, Point, Rect, dimension_label};
 use crate::gfx::{Canvas, argb, argb_from_colorref};
 use crate::log;
 use crate::model::{Annotation, text_line_height};
@@ -18,12 +18,12 @@ use std::cell::RefCell;
 use std::ffi::c_void;
 use std::ptr::null_mut;
 use std::time::Instant;
-use windows::Win32::Foundation::{COLORREF, HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM};
+use windows::Win32::Foundation::{COLORREF, HINSTANCE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
     BI_RGB, BITMAPINFO, BITMAPINFOHEADER, BeginPaint, BitBlt, CreateCompatibleDC,
     CreateDIBSection, CreatePen, CreateSolidBrush, DIB_RGB_COLORS, DT_CENTER, DT_SINGLELINE,
     DT_VCENTER, DeleteDC, DeleteObject, DrawTextW, EndPaint, GetStockObject, HBITMAP, HDC,
-    HGDIOBJ, InvalidateRect, NULL_BRUSH, PAINTSTRUCT, PS_DASH, PS_SOLID, Rectangle, RGBQUAD,
+    HGDIOBJ, InvalidateRect, NULL_BRUSH, PAINTSTRUCT, PS_SOLID, Rectangle, RGBQUAD,
     SRCCOPY, SelectObject, SetBkMode, SetDIBitsToDevice, SetTextColor, TRANSPARENT,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
@@ -34,15 +34,21 @@ use windows::Win32::UI::WindowsAndMessaging::{
     CS_DBLCLKS, CreateWindowExW, DefWindowProcW, HWND_TOPMOST, IDC_ARROW, LoadCursorW,
     RegisterClassW, SW_HIDE, SWP_NOACTIVATE, SWP_SHOWWINDOW, SetCursor, SetForegroundWindow,
     SetWindowPos, ShowWindow, WM_CHAR, WM_KEYDOWN, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEMOVE,
-    WM_MOUSEWHEEL, WM_PAINT, WM_SETCURSOR, WNDCLASSW, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+    WM_MOUSEWHEEL, WM_PAINT, WM_RBUTTONDOWN, WM_SETCURSOR, WNDCLASSW, WS_EX_TOOLWINDOW,
+    WS_EX_TOPMOST, WS_POPUP, AppendMenuW, CreatePopupMenu, DestroyMenu, GetCursorPos, MF_SEPARATOR,
+    MF_STRING, TPM_RETURNCMD, TPM_RIGHTBUTTON, TrackPopupMenu,
 };
 use windows::core::{PCWSTR, w};
 
 const CLASS: PCWSTR = w!("ScreenshotterOverlay");
 /// Metade do lado dos quadradinhos das alças da seleção, em pixels.
-const HANDLE_HALF: i32 = 3;
+const HANDLE_HALF: i32 = 4;
 /// MK_SHIFT do WM_MOUSEMOVE (wParam), valor fixo do Win32.
 const MK_SHIFT_FLAG: usize = 0x0004;
+/// IDs dos itens do menu de clique direito.
+const MENU_COPY: i32 = 1;
+const MENU_SAVE: i32 = 2;
+const MENU_CLOSE: i32 = 3;
 
 pub struct Session {
     pub hwnd: HWND,
@@ -184,6 +190,7 @@ pub fn start_capture(settings: &Settings) -> windows::core::Result<()> {
 pub fn finish() {
     let taken = SESSION.with(|s| s.borrow_mut().take());
     if let Some(sess) = taken {
+        remember_color(sess.editor.color_changed, sess.editor.color);
         unsafe {
             let _ = ReleaseCapture();
             let _ = ShowWindow(sess.hwnd, SW_HIDE);
@@ -192,6 +199,17 @@ pub fn finish() {
             sess.back.free();
         }
     }
+}
+
+/// Lembra a última cor escolhida para a próxima captura (só se o usuário trocou nesta).
+fn remember_color(changed: bool, c: Color) {
+    if !changed {
+        return;
+    }
+    let path = crate::settings_path();
+    let mut s = Settings::load(&path);
+    s.default_color = c;
+    let _ = s.save(&path);
 }
 
 fn lparam_point(lp: LPARAM) -> Point {
@@ -215,6 +233,11 @@ unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM)
             redraw(hwnd);
             LRESULT(0)
         }
+        WM_RBUTTONDOWN => {
+            on_right_click(hwnd);
+            redraw(hwnd);
+            LRESULT(0)
+        }
         WM_MOUSEMOVE => {
             let shift = (wp.0 & MK_SHIFT_FLAG) != 0 || key_down(VK_SHIFT.0 as i32);
             let p = lparam_point(lp);
@@ -223,7 +246,8 @@ unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM)
                     sess.editor.on_mouse_move(p, shift);
                     sess.hover = match sess.editor.sel {
                         Some(sel) if sess.editor.toolbar_visible() => {
-                            toolbar::hit(&toolbar::layout(sel, sess.editor.screen_rect()), p)
+                            let k = toolbar::look(sess.editor.ui_style);
+                            toolbar::hit(&toolbar::layout(sel, sess.editor.screen_rect(), &k), p, &k)
                         }
                         _ => None,
                     };
@@ -292,42 +316,104 @@ enum Cmd {
     Close,
 }
 
+/// Clique direito com a seleção pronta: abre o menu Copiar / Salvar / Fechar (como no Lightshot).
+fn on_right_click(hwnd: HWND) {
+    let ready = SESSION.with(|s| {
+        let mut g = s.borrow_mut();
+        let Some(sess) = g.as_mut() else { return false };
+        let e = &mut sess.editor;
+        if !e.toolbar_visible() || !e.has_selection() {
+            return false;
+        }
+        if e.text.is_some() {
+            e.commit_text();
+        }
+        true
+    });
+    if !ready {
+        return;
+    }
+
+    let mut pt = POINT::default();
+    unsafe {
+        let _ = GetCursorPos(&mut pt);
+        let Ok(menu) = CreatePopupMenu() else {
+            restore_capture(hwnd);
+            return;
+        };
+        let _ = AppendMenuW(menu, MF_STRING, MENU_COPY as usize, w!("Copy"));
+        let _ = AppendMenuW(menu, MF_STRING, MENU_SAVE as usize, w!("Save"));
+        let _ = AppendMenuW(menu, MF_SEPARATOR, 0, None);
+        let _ = AppendMenuW(menu, MF_STRING, MENU_CLOSE as usize, w!("Close"));
+        // O menu precisa da captura do mouse; a sobreposição a recupera depois.
+        let _ = ReleaseCapture();
+        let _ = SetForegroundWindow(hwnd);
+        let cmd = TrackPopupMenu(
+            menu,
+            TPM_RIGHTBUTTON | TPM_RETURNCMD,
+            pt.x,
+            pt.y,
+            Some(0),
+            hwnd,
+            None,
+        )
+        .0;
+        let _ = DestroyMenu(menu);
+        // Nenhum borrow ativo aqui: copiar/salvar podem chamar Win32 modal.
+        match cmd {
+            MENU_COPY => copy_and_close(),
+            MENU_SAVE => save_and_close(),
+            MENU_CLOSE => finish(),
+            _ => {}
+        }
+    }
+    restore_capture(hwnd);
+}
+
+/// Devolve a captura do mouse à sobreposição, se ela ainda estiver aberta.
+fn restore_capture(hwnd: HWND) {
+    let open = SESSION.with(|s| s.borrow().is_some());
+    if open {
+        unsafe {
+            SetCapture(hwnd);
+        }
+    }
+}
+
 fn on_mouse_down(p: Point) {
     // Decisão primeiro, sem segurar o borrow durante comandos que chamam Win32 modal.
     let cmd = SESSION.with(|s| {
         let mut g = s.borrow_mut();
         let sess = g.as_mut()?;
         let e = &mut sess.editor;
-        // X de cancelar: fecha a captura (só clicando nele; clique fora não fecha).
-        if e.cancel_hit(p) {
-            return Some(Cmd::Close);
-        }
         // As barras só existem (e só recebem clique) com a seleção pronta.
         let visible = e.toolbar_visible();
         if let (true, Some(sel)) = (visible, e.sel) {
-            let l = toolbar::layout(sel, e.screen_rect());
-            if let Some(b) = toolbar::hit(&l, p) {
+            let k = toolbar::look(e.ui_style);
+            let l = toolbar::layout(sel, e.screen_rect(), &k);
+            if let Some(b) = toolbar::hit(&l, p, &k) {
                 return match b {
-                    Button::Move => { e.set_tool(Tool::Move); None }
-                    Button::Pen => { e.set_tool(Tool::Pen); None }
-                    Button::Line => { e.set_tool(Tool::Line); None }
-                    Button::Arrow => { e.set_tool(Tool::Arrow); None }
-                    Button::Rect => { e.set_tool(Tool::Rect); None }
-                    Button::Ellipse => { e.set_tool(Tool::Ellipse); None }
-                    Button::Marker => { e.set_tool(Tool::Marker); None }
-                    Button::Text => { e.set_tool(Tool::Text); None }
-                    Button::Pixelate => { e.set_tool(Tool::Pixelate); None }
-                    Button::Number => { e.set_tool(Tool::Number); None }
+                    Button::Move => { e.toggle_tool(Tool::Move); None }
+                    Button::Pen => { e.toggle_tool(Tool::Pen); None }
+                    Button::Line => { e.toggle_tool(Tool::Line); None }
+                    Button::Arrow => { e.toggle_tool(Tool::Arrow); None }
+                    Button::Rect => { e.toggle_tool(Tool::Rect); None }
+                    Button::Ellipse => { e.toggle_tool(Tool::Ellipse); None }
+                    Button::Marker => { e.toggle_tool(Tool::Marker); None }
+                    Button::Text => { e.toggle_tool(Tool::Text); None }
+                    Button::Pixelate => { e.toggle_tool(Tool::Pixelate); None }
+                    Button::Number => { e.toggle_tool(Tool::Number); None }
                     Button::ColorSwatch => { e.toggle_palette(); None }
                     Button::Undo => { e.undo(); None }
                     Button::ClearAll => { e.clear_all(); None }
                     Button::Copy => Some(Cmd::Copy),
                     Button::Save => Some(Cmd::Save),
                     Button::Close => Some(Cmd::Close),
+                    Button::TextMove => { e.toggle_tool(Tool::MoveText); None }
                 };
             }
             if e.palette_open {
-                if let Some(c) = toolbar::palette_hit(&l, e.palette_colors(), p) {
+                if let Some(c) = toolbar::palette_hit(&l, e.palette_colors(), p, &k) {
                     e.set_color(c);
                     return None;
                 }
@@ -440,22 +526,31 @@ fn paint_to(hdc: HDC) {
             if let Some(sel) = e.sel {
                 paint_selection(b, canvas.as_ref(), sel, e.capture.width);
                 if let (true, Some(cv)) = (e.toolbar_visible(), canvas.as_ref()) {
-                    let l = toolbar::layout(sel, e.screen_rect());
-                    let (v, hz) = toolbar::button_rects(&l);
+                    let k = toolbar::look(e.ui_style);
+                    let l = toolbar::layout(sel, e.screen_rect(), &k);
+                    let (v, hz) = toolbar::button_rects(&l, &k);
                     let active = active_button(e.tool);
-                    toolbar::paint_panel(cv, l.vertical);
-                    toolbar::paint_buttons(cv, &v, Some(active), sess.hover, e.color);
-                    toolbar::paint_panel(cv, l.horizontal);
-                    toolbar::paint_buttons(cv, &hz, None, sess.hover, e.color);
-                    if let Some(cr) = e.cancel_rect() {
-                        toolbar::paint_cancel(cv, cr);
+                    toolbar::paint_panel(cv, l.vertical, &k);
+                    toolbar::paint_buttons(cv, &v, active, sess.hover, e.color, &k);
+                    // Ícone de mover texto: aparece com o mouse sobre o T (ou no modo de mover texto).
+                    let fly_shown = matches!(sess.hover, Some(Button::Text) | Some(Button::TextMove))
+                        || e.tool == Tool::MoveText;
+                    if fly_shown {
+                        let panel = toolbar::text_move_panel(&l, &k);
+                        toolbar::paint_panel(cv, panel, &k);
+                        let active_fly = (e.tool == Tool::MoveText).then_some(Button::TextMove);
+                        let btn = [(Button::TextMove, toolbar::text_move_button(panel, &k))];
+                        toolbar::paint_buttons(cv, &btn, active_fly, sess.hover, e.color, &k);
                     }
+                    toolbar::paint_panel(cv, l.horizontal, &k);
+                    toolbar::paint_buttons(cv, &hz, None, sess.hover, e.color, &k);
                     if e.palette_open {
                         toolbar::paint_palette(
                             cv,
-                            toolbar::palette_panel(&l, e.palette_colors()),
-                            &toolbar::palette_rects(&l, e.palette_colors()),
+                            toolbar::palette_panel(&l, e.palette_colors(), &k),
+                            &toolbar::palette_rects(&l, e.palette_colors(), &k),
                             e.color,
+                            &k,
                         );
                     }
                 }
@@ -470,18 +565,20 @@ fn paint_to(hdc: HDC) {
     });
 }
 
-fn active_button(t: Tool) -> Button {
+fn active_button(t: Tool) -> Option<Button> {
     match t {
-        Tool::Pen => Button::Pen,
-        Tool::Line => Button::Line,
-        Tool::Arrow => Button::Arrow,
-        Tool::Rect => Button::Rect,
-        Tool::Ellipse => Button::Ellipse,
-        Tool::Marker => Button::Marker,
-        Tool::Text => Button::Text,
-        Tool::Pixelate => Button::Pixelate,
-        Tool::Number => Button::Number,
-        Tool::Move => Button::Move,
+        Tool::Pen => Some(Button::Pen),
+        Tool::Line => Some(Button::Line),
+        Tool::Arrow => Some(Button::Arrow),
+        Tool::Rect => Some(Button::Rect),
+        Tool::Ellipse => Some(Button::Ellipse),
+        Tool::Marker => Some(Button::Marker),
+        Tool::Text => Some(Button::Text),
+        Tool::Pixelate => Some(Button::Pixelate),
+        Tool::Number => Some(Button::Number),
+        Tool::Move => Some(Button::Move),
+        Tool::None => None,
+        Tool::MoveText => Some(Button::Text),
     }
 }
 
@@ -523,19 +620,10 @@ unsafe fn blit_bgra(hdc: HDC, r: Rect, px: &[u8]) {
 /// Caixa de edição do texto: retângulo arredondado visível mesmo vazio, e cursor de digitação.
 unsafe fn paint_text_box(hdc: HDC, cv: &Canvas, at: Point, buf: &str, size: u32, color: Color) {
     unsafe {
-        let (widest, last_w) = draw::measure_text(hdc, buf, size);
+        // A caixa (branca, de cantos retos e borda roxa) já vem do balão do texto; aqui só o cursor.
+        let (_, last_w) = draw::measure_text(hdc, buf, size);
         let line_h = text_line_height(size);
         let lines = buf.split('\n').count() as i32;
-        let w = (widest + 2 * TEXT_PAD + 4).max(TEXT_MIN_W);
-        let h = (lines * line_h + 2 * TEXT_PAD).max(line_h + 2 * TEXT_PAD);
-        let r = (
-            (at.x - TEXT_PAD) as f32,
-            (at.y - TEXT_PAD) as f32,
-            w as f32,
-            h as f32,
-        );
-        cv.fill_round(r, 5.0, argb(0x26, 0xFFFFFF));
-        cv.stroke_round(r, 5.0, argb(0xFF, 0x6366F1), 1.6);
         // Cursor no fim da última linha.
         let cx = (at.x + last_w + 1) as f32;
         let top = (at.y + (lines - 1) * line_h) as f32;
@@ -547,21 +635,19 @@ unsafe fn paint_text_box(hdc: HDC, cv: &Canvas, at: Point, buf: &str, size: u32,
 /// de medidas, como no Lightshot.
 unsafe fn paint_selection(hdc: HDC, cv: Option<&Canvas>, sel: Rect, screen_w: i32) {
     unsafe {
-        let white = CreatePen(PS_SOLID, 1, COLORREF(0x00FF_FFFF));
-        let dots = CreatePen(PS_DASH, 1, COLORREF(0x0000_0000));
-        let old_pen = SelectObject(hdc, HGDIOBJ(white.0));
+        // Seleção na cor da marca: borda roxa sólida.
+        let purple = COLORREF(0x00E8_556F);
+        let border = CreatePen(PS_SOLID, 2, purple);
+        let old_pen = SelectObject(hdc, HGDIOBJ(border.0));
         let old_brush = SelectObject(hdc, HGDIOBJ(GetStockObject(NULL_BRUSH).0));
-        // Linha branca contínua por baixo, preta tracejada por cima: alterna preto e branco.
-        let _ = Rectangle(hdc, sel.x, sel.y, sel.right(), sel.bottom());
-        SetBkMode(hdc, TRANSPARENT);
-        SelectObject(hdc, HGDIOBJ(dots.0));
         let _ = Rectangle(hdc, sel.x, sel.y, sel.right(), sel.bottom());
 
-        // Alças: quadradinhos pretos com borda branca fina.
-        let black = CreateSolidBrush(COLORREF(0x0000_0000));
-        SelectObject(hdc, HGDIOBJ(white.0));
-        SelectObject(hdc, HGDIOBJ(black.0));
-        for (_, p) in sel.handles() {
+        // Alças: quadradinhos brancos com borda roxa. A do canto inferior direito é roxa cheia (redimensiona).
+        let white_brush = CreateSolidBrush(COLORREF(0x00FF_FFFF));
+        let purple_brush = CreateSolidBrush(purple);
+        for (h, p) in sel.handles() {
+            let brush = if h == Handle::SE { purple_brush } else { white_brush };
+            SelectObject(hdc, HGDIOBJ(brush.0));
             let _ = Rectangle(
                 hdc,
                 p.x - HANDLE_HALF,
@@ -572,9 +658,9 @@ unsafe fn paint_selection(hdc: HDC, cv: Option<&Canvas>, sel: Rect, screen_w: i3
         }
         SelectObject(hdc, old_pen);
         SelectObject(hdc, old_brush);
-        let _ = DeleteObject(HGDIOBJ(white.0));
-        let _ = DeleteObject(HGDIOBJ(dots.0));
-        let _ = DeleteObject(HGDIOBJ(black.0));
+        let _ = DeleteObject(HGDIOBJ(border.0));
+        let _ = DeleteObject(HGDIOBJ(white_brush.0));
+        let _ = DeleteObject(HGDIOBJ(purple_brush.0));
 
         let Some(cv) = cv else { return };
 
@@ -593,7 +679,7 @@ unsafe fn paint_selection(hdc: HDC, cv: Option<&Canvas>, sel: Rect, screen_w: i3
         cv.fill_round(
             (lx as f32, ly as f32, label_w as f32, label_h as f32),
             5.0,
-            argb(0xF0, 0x262626),
+            argb(0xFF, 0x6F55E8),
         );
         SetBkMode(hdc, TRANSPARENT);
         SetTextColor(hdc, COLORREF(0x00FF_FFFF));

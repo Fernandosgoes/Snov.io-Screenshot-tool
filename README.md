@@ -1,101 +1,58 @@
-# Screenshotter
+# Snov.io - Screenshot tool
 
-![Screenshotter em uso](assets/preview.png)
+![Snov.io Screenshot tool](assets/preview.png)
 
-Capturador de tela para Windows, leve e sem rede. Você seleciona uma área, anota e copia ou salva a imagem. Roda na bandeja do sistema e não grava nada em disco sem você pedir.
+Lightweight screenshot tool for Windows. Select an area, annotate it, then copy or save the image. It lives in the system tray and never writes anything to disk unless you ask it to. No network access.
 
-## Instalação
+📖 **Full tutorial, tool by tool:** [docs/TUTORIAL.md](docs/TUTORIAL.md)
 
-1. Baixe `Screenshotter-Setup.exe` na página de [Releases](https://github.com/Fernandosgoes/screenshotter/releases).
-2. Abra o instalador. Ele instala só para o seu usuário, sem pedir permissão de administrador.
-3. Marque, se quiser, as opções:
-   - **Iniciar o Screenshotter com o Windows**
-   - **Criar atalho na área de trabalho**
-4. Clique em **Concluir**. O app abre e fica na bandeja (perto do relógio).
+## Download
 
-> Se o Windows mostrar "O Windows protegeu o seu PC" (SmartScreen), clique em **Mais informações** e depois em **Executar assim mesmo**. Isso acontece com programas sem assinatura digital.
+1. Go to the [Releases](../../releases) page and download `Snovio-Screenshot-Tool.exe` from the latest version.
+2. Put the file in a folder of your choice (the app keeps `settings.json` next to it) and double-click to open.
+3. The app appears in the tray, near the clock.
 
-Para desinstalar: Configurações do Windows → Aplicativos → Screenshotter → Desinstalar.
+> If Windows shows "Windows protected your PC" (SmartScreen), click **More info** and then **Run anyway**. This happens with programs that have no digital signature.
 
-## Como usar
+There is no installer. To stop the app, right-click the tray icon → **Exit**.
 
-### 1. Tirar um print
+## Quick start
 
-Pressione **Shift + Backspace**. A tela escurece e a imagem fica congelada.
+| What to do | How |
+|---|---|
+| Start a capture | **Shift + Backspace** (or the hotkey you pick in Settings) |
+| Select an area | Drag with the mouse and release |
+| Annotate | Pick a tool from the vertical bar next to the selection |
+| Copy | Copy button in the horizontal bar, or **Ctrl + C** |
+| Save to a file | Save button, or **Ctrl + S** |
+| Cancel | **Esc**, or the X button in the horizontal bar |
 
-- Clique e arraste para selecionar a área.
-- Ao soltar o mouse, aparecem as barras de ferramentas ao lado da seleção.
-- A etiqueta acima da seleção mostra o tamanho em pixels.
+Every tool, with examples, is described in the [tutorial](docs/TUTORIAL.md).
 
-### 2. Sair da captura sem salvar
+## Settings
 
-- Clique no **X** no canto superior direito da seleção, ou
-- pressione **Esc**.
+Right-click the tray icon → **Settings**. There you can choose:
 
-Clicar fora da área **não** cancela a seleção. Assim você não perde o recorte por engano.
+- **Capture hotkey:** Shift+BKSP, Shift+Insert, Shift+PrtScn, or **Custom**. For Custom, click the field and press the combination you want (it needs Ctrl, Alt or Shift, or an F key).
+- **Default color:** the color tools start with. The default is Snov.io purple.
+- **Stroke width** and **Text size:** line thickness and text size, with a live preview.
+- **Save format:** JPEG (default) or PNG.
+- **Toolbar style:** *Conservative (light)*, the light toolbar, or *Modern (dark)*, the dark toolbar.
+- **Start with Windows:** opens the app when you sign in.
 
-### 3. Mover ou redimensionar a área
+Changes apply to the next capture. If the hotkey you chose is already used by another program, the app falls back to Print Screen and tells you.
 
-- **Mover:** escolha a **cruz** (primeiro botão da barra vertical) e arraste dentro da área. Com a cruz ativa, arrastar dentro da área move a seleção. Com qualquer outra ferramenta, arrastar dentro da área desenha.
-- **Redimensionar:** arraste os quadradinhos pretos nas bordas e cantos.
-- Para escolher uma área nova: cancele (X ou Esc) e selecione de novo.
+## Building from source
 
-### 4. Anotar
-
-A barra vertical, ao lado da seleção, tem as ferramentas:
-
-| Botão | Ferramenta | Atalho |
-|---|---|---|
-| Cruz | Mover a área | — |
-| Caneta | Desenho livre | P |
-| Linha | Linha reta (Shift = 45°) | L |
-| Seta | Seta (Shift = 45°) | A |
-| Retângulo | Retângulo (Shift = quadrado) | R |
-| Elipse | Elipse (Shift = círculo) | E |
-| Marca-texto | Destaque amarelo | M |
-| Texto | Caixa de texto | T |
-| Pixelar | Borra a área escolhida | B |
-| Número | Contador numerado | N |
-| Bolinha colorida | Paleta de cores | — |
-| Desfazer | Desfaz a última ação | Ctrl + Z |
-
-- **Cores:** clique na bolinha colorida ou use as teclas **1 a 6**. A ferramenta Número usa só vermelho, verde e azul (teclas 1 a 3).
-- **Espessura:** role a roda do mouse para mudar a espessura do traço. Com a ferramenta Texto, a roda muda o tamanho da letra.
-- **Texto:** clique na área com a ferramenta Texto e digite. **Enter** termina, **Shift + Enter** quebra a linha. Clicar fora da caixa também termina o texto.
-- **Apagar um desenho:** selecione-o e pressione **Del**.
-- **Refazer:** **Ctrl + Y**.
-
-### 5. Copiar ou salvar
-
-- **Copiar para a área de transferência:** botão de copiar na barra horizontal, ou **Ctrl + C**. Depois é só colar (Ctrl + V) em qualquer lugar.
-- **Salvar em arquivo:** botão de salvar na barra horizontal, ou **Ctrl + S**. Escolha o nome e a pasta. O diálogo abre com o formato padrão das configurações (JPG ou PNG); a extensão que você digitar no nome do arquivo define o formato final.
-
-Depois de copiar ou salvar, a captura fecha.
-
-## Configurações
-
-Clique com o botão direito no ícone da bandeja → **Configurações**. Lá você pode:
-
-- trocar o atalho de captura: Shift + Backspace, Print Screen, Shift + Print Screen ou **Personalizado**. Em Personalizado, clique no campo **Tecla personalizada** e pressione a combinação desejada (ex.: Ctrl + Alt + S). A combinação precisa ter Ctrl, Alt ou Shift, ou ser uma tecla F;
-- escolher o formato padrão de salvamento: JPG (leve, padrão) ou PNG (sem perda);
-- ativar ou desativar a abertura com o Windows;
-- ajustar a espessura padrão do traço, o tamanho padrão do texto e a cor padrão.
-
-As alterações valem na próxima captura. As configurações ficam no arquivo `settings.json`, na mesma pasta do `screenshotter.exe`.
-
-Se Shift + Backspace já estiver em uso por outro programa, o app usa Print Screen e avisa ao abrir.
-
-## Sair do app
-
-Clique com o botão direito no ícone da bandeja → **Sair**.
-
-## Para quem for compilar do código
-
-Requisitos: Rust (toolchain estável) e, para gerar o instalador, o [Inno Setup 6](https://jrsoftware.org/isinfo.php).
+Requirements: [Rust](https://rustup.rs) (stable toolchain) and Windows 10 or 11.
 
 ```
-cargo build --release
-ISCC.exe installer\Screenshotter.iss    # gera dist\Screenshotter-Setup.exe
+cargo build --release          # creates target\release\Screenshotter.exe
+cargo test                     # runs the tests
 ```
 
-Para rodar os testes: `cargo test`.
+The Inter font is embedded in the executable (`assets/fonts/`, SIL Open Font License, see `assets/fonts/LICENSE-Inter.txt`).
+
+## License
+
+Code and brand: internal use by Snov.io. The Inter font is licensed under the SIL Open Font License.
