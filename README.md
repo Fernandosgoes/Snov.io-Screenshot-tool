@@ -12,7 +12,7 @@ A lightweight Windows screenshot tool made for the Snov.io team. Select an area,
 
 ## Download
 
-1. Open the **Releases** page of this repository.
+1. Open the [**Releases** page](https://github.com/Fernandosgoes/Snov.io-Screenshot-tool/releases) and open the latest release.
 2. Download `Snovio-Screenshot-Tool.exe` from the latest release.
 3. Put it in a folder of your choice. The app stores `settings.json` next to the file.
 4. Double-click to start. The icon appears in the system tray.
